@@ -8,6 +8,13 @@ h1 {
     color: #333;
 }
 
+#instructions {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+}
+
 #furniture-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
