@@ -9,21 +9,32 @@ document.addEventListener('DOMContentLoaded', function() {
         'Side Table', 'Recliner', 'Hutch', 'Bean Bag', 'Chaise Lounge', 'Rocking Chair', 'Swivel Chair', 'Footstool', 'Console Table', 'End Table'
     ];
 
-    // Load claims from localStorage
-    let claims = JSON.parse(localStorage.getItem('furnitureClaims')) || {};
+    let claims = {};
 
-    // Create 30 furniture items
-    for (let i = 1; i <= 30; i++) {
-        const item = document.createElement('div');
-        item.className = 'furniture-item';
-        item.id = `furniture-${i}`;
-        item.textContent = furnitureNames[i - 1];
-        if (claims[i]) {
-            item.textContent += ` - Claimed by ${claims[i]}`;
-            item.classList.add('claimed');
+    // Load claims from server
+    fetch('/api/claims')
+        .then(response => response.json())
+        .then(data => {
+            claims = data;
+            renderGrid();
+        })
+        .catch(error => console.error('Error loading claims:', error));
+
+    function renderGrid() {
+        grid.innerHTML = '';
+        // Create 30 furniture items
+        for (let i = 1; i <= 30; i++) {
+            const item = document.createElement('div');
+            item.className = 'furniture-item';
+            item.id = `furniture-${i}`;
+            item.textContent = furnitureNames[i - 1];
+            if (claims[i]) {
+                item.textContent += ` - Claimed by ${claims[i]}`;
+                item.classList.add('claimed');
+            }
+            item.addEventListener('click', () => handleClick(i));
+            grid.appendChild(item);
         }
-        item.addEventListener('click', () => handleClick(i));
-        grid.appendChild(item);
     }
 
     function handleClick(id) {
@@ -31,9 +42,21 @@ document.addEventListener('DOMContentLoaded', function() {
             // Already claimed, ask for admin password to unclaim
             const password = prompt('Enter admin password to unclaim:');
             if (password === adminPassword) {
-                delete claims[id];
-                localStorage.setItem('furnitureClaims', JSON.stringify(claims));
-                updateItem(id);
+                fetch(`/api/unclaim/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        delete claims[id];
+                        updateItem(id);
+                    } else {
+                        alert('Error unclaiming: ' + data.error);
+                    }
+                })
+                .catch(error => console.error('Error unclaiming:', error));
             } else {
                 alert('Incorrect password.');
             }
@@ -41,9 +64,21 @@ document.addEventListener('DOMContentLoaded', function() {
             // Not claimed, prompt for username
             const username = prompt('Enter your username to claim this furniture:');
             if (username && username.trim() !== '') {
-                claims[id] = username.trim();
-                localStorage.setItem('furnitureClaims', JSON.stringify(claims));
-                updateItem(id);
+                fetch(`/api/claim/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: username.trim() })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        claims[id] = username.trim();
+                        updateItem(id);
+                    } else {
+                        alert('Error claiming: ' + data.error);
+                    }
+                })
+                .catch(error => console.error('Error claiming:', error));
             }
         }
     }
